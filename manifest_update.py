@@ -86,7 +86,7 @@ def main():
     parser = argparse.ArgumentParser(description="Update Jellyfin plugin manifest with a new release entry.")
     parser.add_argument("arg", help="Either the local asset file (Jellyfin.Plugin.Subdivx-vX.Y.Z.zip) or a version (vX.Y.Z | X.Y.Z)")
     parser.add_argument("--repo", default=REPO_DEFAULT, help="GitHub repo in the form owner/name (default: %(default)s)")
-    parser.add_argument("--target-abi", default="10.10.x.x", help="Target ABI string to write into manifest (default: %(default)s)")
+    parser.add_argument("--target-abi", default="10.10.0.0", help="Target ABI string to write into manifest (default: %(default)s)")
     args = parser.parse_args()
 
     repo = args.repo
