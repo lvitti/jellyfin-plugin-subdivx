@@ -6,8 +6,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Attach to the environment that holds the TOKEN secret
-    environment: CI
     strategy:
       matrix:
         dotnet-version: ['8.0.x']

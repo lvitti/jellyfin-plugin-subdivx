@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: CI
     strategy:
       matrix:
         dotnet-version: ['8.0.x']
@@ -51,7 +50,7 @@ jobs:
         uses: papeloto/action-zip@v1
         with:
           files: release/Jellyfin.Plugin.Subdivx.dll release/SharpCompress.dll release/ZstdSharp.dll
-          dest: jellyfin-plugin-subdivx-${{ env.RELEASE_VERSION }}.zip
+          dest: Jellyfin.Plugin.Subdivx-${{ env.RELEASE_VERSION }}.zip
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
