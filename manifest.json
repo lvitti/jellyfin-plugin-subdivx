@@ -1,0 +1,13 @@
+[
+  {
+    "guid": "9f420e7a-3ae6-4073-9bc9-81da6dea8143",
+    "name": "subdivx",
+    "description": "Download subtitles from subdivx.",
+    "overview": "Download subtitles for your media.",
+    "owner": "lvitti",
+    "category": "Metadata",
+    "imageUrl": "",
+    "versions": [
+    ]
+  }
+]
