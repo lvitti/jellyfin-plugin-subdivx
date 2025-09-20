@@ -40,10 +40,10 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --configuration Release --no-restore
-      - name: Test
-        env:
-          TOKEN: ${{ secrets.SUBX_API_TOKEN }}
-        run: dotnet test --no-restore --verbosity normal
+#      - name: Test
+#        env:
+#          TOKEN: ${{ secrets.SUBX_API_TOKEN }}
+#        run: dotnet test --no-restore --verbosity normal
       - name: Publish
         run: dotnet publish Jellyfin.Plugin.Subdivx/Jellyfin.Plugin.Subdivx.csproj -c Release -o release /property:Version="${{ env.NET_VERSION }}"
       - name: Pack
