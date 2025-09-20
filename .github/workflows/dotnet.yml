@@ -53,6 +53,8 @@ jobs:
           dest: Jellyfin.Plugin.Subdivx-${{ env.RELEASE_VERSION }}.zip
       - name: Release
         uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: false
           name: Release ${{ env.RELEASE_VERSION }}
