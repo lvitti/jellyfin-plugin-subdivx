@@ -1,0 +1,34 @@
+name: dotnet tests
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Attach to the environment that holds the TOKEN secret
+    environment: CI
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x']
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Restore
+        run: dotnet restore
+      - name: Check TOKEN presence
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          if [ -n "${TOKEN}" ]; then
+            echo "TOKEN present"
+          else
+            echo "TOKEN missing (fork PRs don't receive secrets)"
+          fi
+      - name: Test
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: dotnet test --no-restore --verbosity normal

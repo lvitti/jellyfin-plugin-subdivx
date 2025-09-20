@@ -1,0 +1,61 @@
+﻿name: dotnet release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: CI
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x']
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set env
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+          echo "NET_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          echo "TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${RELEASE_VERSION})" >> $GITHUB_ENV
+      - name: Display env
+        run: |
+          echo "Release Version is ${{ env.RELEASE_VERSION }}"
+          echo "NET Version is ${{ env.NET_VERSION }}"
+      - name: Check TOKEN presence
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          if [ -n "${TOKEN}" ]; then
+            echo "TOKEN present"
+          else
+            echo "TOKEN missing (fork PRs don't receive secrets)"
+          fi
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: dotnet test --no-restore --verbosity normal
+      - name: Publish
+        run: dotnet publish Jellyfin.Plugin.Subdivx/Jellyfin.Plugin.Subdivx.csproj -c Release -o release /property:Version="${{ env.NET_VERSION }}"
+      - name: Pack
+        uses: papeloto/action-zip@v1
+        with:
+          files: release/Jellyfin.Plugin.Subdivx.dll release/SharpCompress.dll release/ZstdSharp.dll
+          dest: jellyfin-plugin-subdivx-${{ env.RELEASE_VERSION }}.zip
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          name: Release ${{ env.RELEASE_VERSION }}
+          body: ${{ env.TAG_MESSAGE }}
+          files: ${{ github.workspace }}/Jellyfin.Plugin.Subdivx-${{ env.RELEASE_VERSION }}.zip
