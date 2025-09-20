@@ -1,10 +1,9 @@
 ﻿name: dotnet release
 
 on:
-#  push:
-#    tags:
-#      - "v*.*.*"
-  pull_request:
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
   build:
