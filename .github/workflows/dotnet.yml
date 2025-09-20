@@ -25,12 +25,12 @@ jobs:
           echo "NET Version is ${{ env.NET_VERSION }}"
       - name: Check TOKEN presence
         env:
-          TOKEN: ${{ secrets.TOKEN }}
+          SUBX_API_TOKEN: ${{ secrets.SUBX_API_TOKEN }}
         run: |
-          if [ -n "${TOKEN}" ]; then
-            echo "TOKEN present"
+          if [ -n "${SUBX_API_TOKEN}" ]; then
+            echo "SUBX_API_TOKEN present"
           else
-            echo "TOKEN missing (fork PRs don't receive secrets)"
+            echo "SUBX_API_TOKEN missing (fork PRs don't receive secrets)"
           fi
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v2
@@ -42,7 +42,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
       - name: Test
         env:
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.SUBX_API_TOKEN }}
         run: dotnet test --no-restore --verbosity normal
       - name: Publish
         run: dotnet publish Jellyfin.Plugin.Subdivx/Jellyfin.Plugin.Subdivx.csproj -c Release -o release /property:Version="${{ env.NET_VERSION }}"
