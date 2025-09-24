@@ -1,0 +1,13 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    ports:
+      - 8097:8096
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - jellyfin-config:/config/
+      - ./Docker/plugins/:/config/plugins/Jellyfin.Plugin.SubdivX/
+      - ./Docker/media/:/media/
+volumes:
+  jellyfin-config:
