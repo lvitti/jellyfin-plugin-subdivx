@@ -22,35 +22,36 @@
         <PackageReference Include="SharpCompress" Version="0.37.2"/>
     </ItemGroup>
 
-    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-        <!-- set your base -->
-        <VersionPrefix>1.0.0</VersionPrefix>
+    <!-- TODO: Enable only on dev/IDE -->
+<!--    <PropertyGroup Condition="'$(Configuration)'=='Debug'">-->
+<!--        &lt;!&ndash; set your base &ndash;&gt;-->
+<!--        <VersionPrefix>1.0.0</VersionPrefix>-->
 
-        <!-- revision = DayOfYear*60 + Minute -->
-        <_PerDay>$([MSBuild]::Multiply($([System.DateTime]::UtcNow.DayOfYear), 144))</_PerDay>
-        <_H6>$([MSBuild]::Multiply($([System.DateTime]::UtcNow.Hour), 6))</_H6>
-        <_M10>$([MSBuild]::Divide($([System.DateTime]::UtcNow.Minute), 10))</_M10>
-        <_Rev>$([MSBuild]::Add($([MSBuild]::Add($(_PerDay), $(_H6))), $(_M10)))</_Rev>
+<!--        &lt;!&ndash; revision = DayOfYear*60 + Minute &ndash;&gt;-->
+<!--        <_PerDay>$([MSBuild]::Multiply($([System.DateTime]::UtcNow.DayOfYear), 144))</_PerDay>-->
+<!--        <_H6>$([MSBuild]::Multiply($([System.DateTime]::UtcNow.Hour), 6))</_H6>-->
+<!--        <_M10>$([MSBuild]::Divide($([System.DateTime]::UtcNow.Minute), 10))</_M10>-->
+<!--        <_Rev>$([MSBuild]::Add($([MSBuild]::Add($(_PerDay), $(_H6))), $(_M10)))</_Rev>-->
 
-        <!-- apply to assembly/package -->
-        <Version>$(VersionPrefix).$(_Rev)</Version>
-        
-        <FileVersion>$(Version)</FileVersion>
-        <AssemblyVersion>$(Version)</AssemblyVersion>
-        <InformationalVersion>$(Version)</InformationalVersion>
-    </PropertyGroup>
+<!--        &lt;!&ndash; apply to assembly/package &ndash;&gt;-->
+<!--        <Version>$(VersionPrefix).$(_Rev)</Version>-->
+<!--        -->
+<!--        <FileVersion>$(Version)</FileVersion>-->
+<!--        <AssemblyVersion>$(Version)</AssemblyVersion>-->
+<!--        <InformationalVersion>$(Version)</InformationalVersion>-->
+<!--    </PropertyGroup>-->
 
-    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-        <ItemGroup>
-            <PluginArtifacts Include="$(TargetPath)" />
-            <PluginArtifacts Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+<!--    <Target Name="PostBuild" AfterTargets="PostBuildEvent">-->
+<!--        <ItemGroup>-->
+<!--            <PluginArtifacts Include="$(TargetPath)" />-->
+<!--            <PluginArtifacts Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />-->
 
-            <PluginArtifacts Include="$(TargetDir)SharpCompress.dll" />
-            <PluginArtifacts Include="$(TargetDir)ZstdSharp.dll" />
-        </ItemGroup>
+<!--            <PluginArtifacts Include="$(TargetDir)SharpCompress.dll" />-->
+<!--            <PluginArtifacts Include="$(TargetDir)ZstdSharp.dll" />-->
+<!--        </ItemGroup>-->
 
-        <Copy SourceFiles="@(PluginArtifacts)"
-              DestinationFolder="$(SolutionDir)Docker/plugins"
-              SkipUnchangedFiles="false" />
-    </Target>
+<!--        <Copy SourceFiles="@(PluginArtifacts)"-->
+<!--              DestinationFolder="$(SolutionDir)Docker/plugins"-->
+<!--              SkipUnchangedFiles="false" />-->
+<!--    </Target>-->
 </Project>
