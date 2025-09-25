@@ -239,7 +239,7 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
         }
         
         request.Headers.UserAgent.Clear();
-        request.Headers.UserAgent.ParseAdd( $"Jellyfin-Plugin-Subdivx/{SubdivxPlugin.Instance?.Version.ToString() ?? "unknown"}");
+        request.Headers.UserAgent.ParseAdd( $"Jellyfin-Plugin-Subdivx/{SubdivxPlugin.Instance?.Version?.ToString() ?? "unknown"}");
 
         var response = client.SendAsync(request).GetAwaiter().GetResult();
         response.EnsureSuccessStatusCode();
