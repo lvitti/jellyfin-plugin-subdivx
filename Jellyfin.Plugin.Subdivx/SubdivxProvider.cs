@@ -114,7 +114,7 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
         
     private List<RemoteSubtitleInfo> SearchSubtitles(string query, string? imdbId = null, string? tmdbId = null)
     {
-        string url = $"{this.Configuration.SubXApiUrl}/subtitles/search";
+        string url = $"{this.Configuration.SubXApiUrl}/api/subtitles/search";
         var searchParams = new Dictionary<string, string> { { "query", query } };
 
         if (!string.IsNullOrWhiteSpace(imdbId))
@@ -237,6 +237,9 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
                 }
             }
         }
+        
+        request.Headers.UserAgent.Clear();
+        request.Headers.UserAgent.ParseAdd( $"Jellyfin-Plugin-Subdivx/{SubdivxPlugin.Instance?.Version.ToString() ?? "unknown"}");
 
         var response = client.SendAsync(request).GetAwaiter().GetResult();
         response.EnsureSuccessStatusCode();
@@ -255,7 +258,7 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
         {
             try
             {
-                var getSubtitleUrl = $"{this.Configuration.SubXApiUrl}/subtitles/{id}/download";
+                var getSubtitleUrl = $"{this.Configuration.SubXApiUrl}/api/subtitles/{id}/download";
                 _logger.LogInformation("Download subtitle, {SubtitleUrl}", getSubtitleUrl);
                 fileStream = GetFileStream(getSubtitleUrl, bearerToken: this.Configuration.Token);
             }
