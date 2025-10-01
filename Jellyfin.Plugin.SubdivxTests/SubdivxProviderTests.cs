@@ -2,6 +2,7 @@
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using Jellyfin.Plugin.Subdivx;
+using MediaBrowser.Common;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Providers;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.SubdivxTests;
 
@@ -70,7 +72,9 @@ public class SubdivXProviderTests
         _libraryManager = new FakeLibraryManager();
         BaseItem.LibraryManager = _libraryManager;
         
-        var mockProvider = new Mock<SubdivxProvider>(MockBehavior.Strict, _logger.Object, _libraryManager);
+        var applicationHost = new Mock<IApplicationHost>();
+        
+        var mockProvider = new Mock<SubdivxProvider>(MockBehavior.Strict, _logger.Object, _libraryManager, applicationHost.Object);
         _provider = mockProvider.Object;
     }
 
@@ -86,7 +90,7 @@ public class SubdivXProviderTests
             OriginalTitle = serieName,
             Name = serieName
         };
-        // serie.SetProviderId(MetadataProvider.Imdb, "12345");
+        serie.SetProviderId(MetadataProvider.Imdb, "ttShowImdbId");
         _libraryManager.AddToLibrary(serie);
         
         var season = new Season()
@@ -107,6 +111,7 @@ public class SubdivXProviderTests
             IndexNumber = episodeNumber,
             OriginalTitle = serieName,
         };
+        episode.SetProviderId(MetadataProvider.Imdb, "ttEpisodeImdbId");
         _libraryManager.AddToLibrary(episode);
         
         var request = new SubtitleSearchRequest()

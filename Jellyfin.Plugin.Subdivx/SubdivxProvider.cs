@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Jellyfin.Plugin.Subdivx.Configuration;
+using MediaBrowser.Common;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -22,13 +23,15 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
     
     private readonly ILogger<SubdivxProvider> _logger;
     private readonly ILibraryManager _libraryManager;
-    
+    private readonly IApplicationHost _applicationHost;
+
     private PluginConfiguration Configuration => SubdivxPlugin.Instance?.GetConfiguration();
     
-    public SubdivxProvider(ILogger<SubdivxProvider> logger, ILibraryManager libraryManager)
+    public SubdivxProvider(ILogger<SubdivxProvider> logger, ILibraryManager libraryManager, IApplicationHost appHost)
     {
         _logger = logger;
         _libraryManager = libraryManager;
+        _applicationHost = appHost;
     }
     
     public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
@@ -55,8 +58,8 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
 
                 var query = $"{name} S{episode.Season.IndexNumber:D2}E{episode.IndexNumber:D2}";
             
-                var seriesImdb = episode.Series?.GetProviderId(MetadataProvider.Imdb);
-                var seriesTmdb = episode.Series?.GetProviderId(MetadataProvider.Tmdb);
+                var seriesImdb = episode.GetProviderId(MetadataProvider.Imdb) ?? episode.Series?.GetProviderId(MetadataProvider.Imdb);
+                var seriesTmdb = episode.GetProviderId(MetadataProvider.Tmdb) ?? episode.Series?.GetProviderId(MetadataProvider.Tmdb);
             
                 var subtitles = SearchSubtitles(query, seriesImdb, seriesTmdb);
                 if (subtitles.Count > 0)
@@ -239,7 +242,9 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
         }
         
         request.Headers.UserAgent.Clear();
-        request.Headers.UserAgent.ParseAdd( $"Jellyfin-Plugin-Subdivx/{SubdivxPlugin.Instance?.Version?.ToString() ?? "unknown"}");
+        request.Headers.UserAgent.ParseAdd(
+            $"Jellyfin-Plugin-Subdivx/{SubdivxPlugin.Instance?.Version?.ToString() ?? "unknown"} (Jellyfin {_applicationHost?.ApplicationVersion?.ToString() ?? "unknown" })"
+            );
 
         var response = client.SendAsync(request).GetAwaiter().GetResult();
         response.EnsureSuccessStatusCode();
