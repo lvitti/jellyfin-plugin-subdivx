@@ -9,6 +9,14 @@
     "imageUrl": "",
     "versions": [
       {
+        "checksum": "4098664e261ab2a6ef0170ca2837a4b8",
+        "changelog": "Fix episodes imdb_id",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/lvitti/jellyfin-plugin-subdivx/releases/download/v1.0.3/Jellyfin.Plugin.Subdivx-v1.0.3.zip",
+        "timestamp": "2025-10-01T13:17:44Z",
+        "version": "1.0.3"
+      },
+      {
         "checksum": "ef9b31d0731d5484d44f9af048a898be",
         "changelog": "Auto Released by Actions",
         "targetAbi": "10.10.0.0",
