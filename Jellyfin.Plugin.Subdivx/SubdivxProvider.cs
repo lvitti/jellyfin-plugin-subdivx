@@ -103,16 +103,11 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
 
     private class ItemResponse
     {
-        public int id { get; set; }
-        public string video_type{ get; set; }
+        public string id { get; set; }
         public string title{ get; set; }
-        public int? season{ get; set; }
-        public int? episode{ get; set; }
-        public string? imdb_id{ get; set; }
         public string? description{ get; set; }
         public int downloads{ get; set; }
         public string uploader_name{ get; set; }
-        public DateTime posted_at{ get; set; }
     }
         
     private List<RemoteSubtitleInfo> SearchSubtitles(string query, string? imdbId = null, string? tmdbId = null)
@@ -140,7 +135,7 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
             {
                 Name = "",
                 ThreeLetterISOLanguageName = "ESP",
-                Id = x.id.ToString(),
+                Id = x.id,
                 DownloadCount = x.downloads,
                 Author = x.uploader_name,
                 ProviderName = Name,
