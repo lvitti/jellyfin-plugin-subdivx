@@ -78,9 +78,9 @@ public class SubdivXProviderTests
         _provider = mockProvider.Object;
     }
 
-    [TestCase("The Batman", 4, 6, "901212")]
-    [TestCase("Dexter: New Blood", 1, 1, "694326")]
-    [TestCase("Resident Alien", 2, 5, "801288")]
+    [TestCase("The Batman", 4, 6, "56b1a743-de52-46da-91a1-2c91c9b1427a")]
+    [TestCase("Dexter: New Blood", 1, 1, "098d1c77-508f-4cfb-913e-d34e541fb65c")]
+    [TestCase("Resident Alien", 2, 5, "6b9f7cd4-f60d-4b1d-8f33-1fed1f3f999b")]
     public async Task SearchSerie(string serieName, int seasonNumber, int episodeNumber, string id)
     {
         var serie = new Series
@@ -130,7 +130,7 @@ public class SubdivXProviderTests
         Assert.That(subtitles.FirstOrDefault(p => p.Id == id), Is.Not.Null);
     }
 
-    [TestCase("Bad Boys: Ride or Die", 2024, "752980")]
+    [TestCase("Bad Boys: Ride or Die", 2024, "f117211a-63f3-4485-bb1e-d347750891be")]
     public async Task SearchMovie(string movieName, int movieYear, string id)
     {
         var movie = new Movie()
@@ -157,10 +157,10 @@ public class SubdivXProviderTests
         Assert.That(subtitles.FirstOrDefault(p => p.Id == id), Is.Not.Null);
     }
 
-    [TestCase("Resident Alien S02E05", "801288", 59526)]
-    [TestCase("Dexter: New Blood S01E01", "694326", 42670)]
-    [TestCase("The Batman S04E06", "901212", 14902)]
-    [TestCase("Bad Boys: Ride or Die 2024", "752980", 121267)]
+    [TestCase("Resident Alien S02E05", "6b9f7cd4-f60d-4b1d-8f33-1fed1f3f999b", 59526)]
+    [TestCase("Dexter: New Blood S01E01", "06cbdb1f-e034-4537-a007-5cdc30d6c869", 42670)]
+    [TestCase("The Batman S04E06", "56b1a743-de52-46da-91a1-2c91c9b1427a", 14902)]
+    [TestCase("Bad Boys: Ride or Die 2024", "6373f0a7-5011-4b31-a6f8-59884cc7b4fd", 121267)]
     public async Task DownloadSubtitle(string testName, string id, int length)
     {
         var subtitleResponse = await this._provider.GetSubtitles(id, CancellationToken.None);
