@@ -1,7 +1,10 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using Jellyfin.Plugin.Subdivx;
+using Jellyfin.Plugin.Subdivx.Configuration;
 using MediaBrowser.Common;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
@@ -19,6 +22,7 @@ namespace Jellyfin.Plugin.SubdivxTests;
 public class SubdivXProviderTests
 {
     private SubdivxProvider _provider;
+    private PluginConfiguration _configuration = null!;
     private Mock<ILogger<SubdivxProvider>> _logger;
     private FakeLibraryManager _libraryManager;
     private readonly IFixture _fixture = new Fixture().Customize(new AutoMoqCustomization());
@@ -64,8 +68,8 @@ public class SubdivXProviderTests
         
         var mockPlugin = new Mock<SubdivxPlugin>(MockBehavior.Strict, _applicationPaths.Object, _xmlSerializer.Object);
         
-        var testConfig = ConfigurationHelper.LoadConfig();
-        mockPlugin.Setup(x => x.GetConfiguration()).Returns(testConfig);
+        _configuration = ConfigurationHelper.LoadConfig();
+        mockPlugin.Setup(x => x.GetConfiguration()).Returns(_configuration);
         _ = mockPlugin.Object; // Force Instance initialization
         
         _logger = new Mock<ILogger<SubdivxProvider>>();
@@ -155,6 +159,50 @@ public class SubdivXProviderTests
         var subtitles = await this._provider.Search(request, CancellationToken.None);
         Assert.That(subtitles, Is.Not.Empty);
         Assert.That(subtitles.FirstOrDefault(p => p.Id == id), Is.Not.Null);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task DownloadSubtitleFromLocalArchive(bool hasSubtitle)
+    {
+        var subtitle = "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHola\n"u8.ToArray();
+        var entry = hasSubtitle ? ("movie.vtt", subtitle) : ("README.txt", "Release credits"u8.ToArray());
+        using var archive = SubtitleArchiveTests.CreateZip(entry);
+        using var server = new TcpListener(IPAddress.Loopback, 0);
+        server.Start();
+        _configuration.SubXApiUrl = $"http://127.0.0.1:{((IPEndPoint)server.LocalEndpoint).Port}";
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var serveArchive = ServeArchive(server, archive, timeout.Token);
+        if (hasSubtitle)
+        {
+            var result = await _provider.GetSubtitles("subtitle-id", timeout.Token);
+
+            using var stream = result.Stream;
+            Assert.That(result.Format, Is.EqualTo("vtt"));
+            Assert.That(((MemoryStream)stream).ToArray(), Is.EqualTo(subtitle));
+        }
+        else
+        {
+            Assert.That(async () => await _provider.GetSubtitles("subtitle-id", timeout.Token),
+                Throws.TypeOf<InvalidDataException>().With.Message.Contains("no supported subtitle"));
+        }
+
+        await serveArchive;
+    }
+
+    private static async Task ServeArchive(TcpListener server, Stream archive, CancellationToken cancellationToken)
+    {
+        using var client = await server.AcceptTcpClientAsync(cancellationToken);
+        using var stream = client.GetStream();
+        using var request = new StreamReader(stream, leaveOpen: true);
+        while (await request.ReadLineAsync(cancellationToken) is { Length: > 0 })
+        {
+        }
+
+        var headers = $"HTTP/1.1 200 OK\r\nContent-Length: {archive.Length}\r\nConnection: close\r\n\r\n";
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(headers), cancellationToken);
+        await archive.CopyToAsync(stream, cancellationToken);
     }
 
     [TestCase("Resident Alien S02E05", "6b9f7cd4-f60d-4b1d-8f33-1fed1f3f999b", 59526)]

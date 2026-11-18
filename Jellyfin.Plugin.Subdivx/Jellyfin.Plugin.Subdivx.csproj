@@ -17,6 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Jellyfin.Plugin.SubdivxTests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Jellyfin.Controller" Version="10.10.7"/>
         <PackageReference Include="Jellyfin.Model" Version="10.10.7"/>
         <PackageReference Include="SharpCompress" Version="0.37.2"/>
