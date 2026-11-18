@@ -209,6 +209,7 @@ public class SubdivXProviderTests
     [TestCase("Dexter: New Blood S01E01", "06cbdb1f-e034-4537-a007-5cdc30d6c869", 42670)]
     [TestCase("The Batman S04E06", "56b1a743-de52-46da-91a1-2c91c9b1427a", 14902)]
     [TestCase("Bad Boys: Ride or Die 2024", "6373f0a7-5011-4b31-a6f8-59884cc7b4fd", 121267)]
+    [TestCase("El último aplauso (2009)", "ab9f9cdd-ab48-4c55-abf9-1500864b45ea", 90322)]
     public async Task DownloadSubtitle(string testName, string id, int length)
     {
         var subtitleResponse = await this._provider.GetSubtitles(id, CancellationToken.None);
