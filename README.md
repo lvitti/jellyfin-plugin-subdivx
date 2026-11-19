@@ -28,7 +28,9 @@ You can install and keep the plugin updated by adding its repository to Jellyfin
 
 ## Development Builds
 
-In GitHub, open **Actions**, select **dotnet dev release**, and click **Run workflow**. Choose the branch containing the commit you want to test.
+Add the `build` label to a pull request from a branch in this repository to build its current commit. For another build, remove the label and add it again.
+
+You can also open **Actions**, select **dotnet dev release**, and click **Run workflow** to build a branch directly.
 
 The workflow takes the next patch version after the highest stable Git tag. For example, after `v1.0.4`, the first build is `v1.0.5-dev0` and the next is `v1.0.5-dev1`. When the tests pass, GitHub creates the tag on the selected commit and publishes a pre-release with a ZIP such as `Jellyfin.Plugin.Subdivx-v1.0.5-dev0.zip`. The plugin catalog manifest stays on the stable channel.
 

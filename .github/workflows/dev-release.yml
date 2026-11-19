@@ -3,17 +3,22 @@ name: dotnet dev release
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - ".github/workflows/dev-release.yml"
-      - ".github/workflows/dotnet.yml"
+    types: [labeled]
 
 concurrency:
-  group: ${{ github.event_name == 'workflow_dispatch' && 'subdivx-dev-release' || github.run_id }}
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'build' && github.event.pull_request.head.repo.full_name == github.repository))
+      && 'subdivx-dev-release' || github.run_id }}
 
 jobs:
   package:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'build' && github.event.pull_request.head.repo.full_name == github.repository)
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,6 +26,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
@@ -50,12 +56,12 @@ jobs:
 
           tag="${next_version}-dev${dev}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "NET_VERSION=${tag#v}" >> "$GITHUB_ENV"
           echo "ZIP_NAME=Jellyfin.Plugin.Subdivx-${tag}.zip" >> "$GITHUB_ENV"
       - name: Restore
         run: dotnet restore
       - name: Test
-        if: github.event_name == 'workflow_dispatch'
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: dotnet test --configuration Release --no-restore --verbosity normal
@@ -77,7 +83,6 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'workflow_dispatch'
     needs: package
     runs-on: ubuntu-latest
     permissions:
@@ -91,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.package.outputs.tag }}
-          TARGET_SHA: ${{ github.sha }}
+          TARGET_SHA: ${{ needs.package.outputs.commit }}
         run: |
           gh release create "$TAG" "Jellyfin.Plugin.Subdivx-${TAG}.zip" \
             --target "$TARGET_SHA" --prerelease --latest=false --title "$TAG" \
