@@ -1,0 +1,103 @@
+name: dotnet dev release
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'build' && github.event.pull_request.head.repo.full_name == github.repository))
+      && 'subdivx-dev-release' || github.run_id }}
+
+jobs:
+  package:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'build' && github.event.pull_request.head.repo.full_name == github.repository)
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+      - name: Set dev version
+        id: version
+        run: |
+          tags=$(git tag --list --sort=-version:refname)
+          stable_tag=$(awk '!found && /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; found=1 }' <<< "$tags")
+          if [[ -z "$stable_tag" ]]; then
+            echo "A stable version tag is required to calculate the next patch version." >&2
+            exit 1
+          fi
+
+          patch="${stable_tag##*.}"
+          next_version="${stable_tag%.*}.$((10#$patch + 1))"
+          last_dev=$(awk -v prefix="${next_version}-dev" '
+            !found && index($0, prefix) == 1 {
+              suffix = substr($0, length(prefix) + 1)
+              if (suffix ~ /^[0-9]+$/) { print suffix; found=1 }
+            }
+          ' <<< "$tags")
+
+          dev=0
+          if [[ -n "$last_dev" ]]; then
+            dev=$((10#$last_dev + 1))
+          fi
+
+          tag="${next_version}-dev${dev}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "NET_VERSION=${tag#v}" >> "$GITHUB_ENV"
+          echo "ZIP_NAME=Jellyfin.Plugin.Subdivx-${tag}.zip" >> "$GITHUB_ENV"
+      - name: Restore
+        run: dotnet restore
+      - name: Test
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: dotnet test --configuration Release --no-restore --verbosity normal
+      - name: Publish plugin
+        run: |
+          dotnet publish Jellyfin.Plugin.Subdivx/Jellyfin.Plugin.Subdivx.csproj \
+            --configuration Release --no-restore --output release -p:Version="$NET_VERSION"
+      - name: Package
+        run: |
+          for dll in Jellyfin.Plugin.Subdivx.dll SharpCompress.dll ZstdSharp.dll; do
+            test -s "release/$dll"
+          done
+          zip -j "$ZIP_NAME" release/Jellyfin.Plugin.Subdivx.dll release/SharpCompress.dll release/ZstdSharp.dll
+          unzip -t "$ZIP_NAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: subdivx-dev-zip
+          path: ${{ env.ZIP_NAME }}
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: subdivx-dev-zip
+      - name: Create GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.package.outputs.tag }}
+          TARGET_SHA: ${{ needs.package.outputs.commit }}
+        run: |
+          gh release create "$TAG" "Jellyfin.Plugin.Subdivx-${TAG}.zip" \
+            --target "$TARGET_SHA" --prerelease --latest=false --title "$TAG" \
+            --notes "Development build for manual testing."
