@@ -28,6 +28,8 @@ You can install and keep the plugin updated by adding its repository to Jellyfin
 
 ## Development Builds
 
+Pull request previews use the next patch version after the highest stable Git tag. For example, when the latest stable tag is `v1.0.4`, the preview uses `v1.0.5-dev0`.
+
 From a checkout of the commit you want to test, push a tag such as `v1.0.5-dev0`. The tagged commit must include the dev release workflow. Increment the suffix for each build (`v1.0.5-dev1`, `v1.0.5-dev2`).
 
 ```sh
