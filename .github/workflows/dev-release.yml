@@ -1,16 +1,19 @@
 name: dotnet dev release
 
 on:
-  push:
-    tags:
-      - "v*.*.*-dev*"
+  workflow_dispatch:
   pull_request:
     paths:
       - ".github/workflows/dev-release.yml"
       - ".github/workflows/dotnet.yml"
 
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'subdivx-dev-release' || github.run_id }}
+
 jobs:
   package:
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,32 +25,37 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - name: Set dev version
-        env:
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
+        id: version
         run: |
-          if [[ "$EVENT_NAME" == push ]]; then
-            tag="$REF_NAME"
-          else
-            stable_tag=$(git tag --list --sort=-version:refname |
-              awk '!found && /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; found=1 }')
-            if [[ -z "$stable_tag" ]]; then
-              echo "A stable version tag is required to calculate the next patch version." >&2
-              exit 1
-            fi
-            patch="${stable_tag##*.}"
-            tag="${stable_tag%.*}.$((10#$patch + 1))-dev0"
-          fi
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-dev[0-9]+$ ]]; then
-            echo "Expected a dev tag such as v1.0.5-dev0." >&2
+          tags=$(git tag --list --sort=-version:refname)
+          stable_tag=$(awk '!found && /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; found=1 }' <<< "$tags")
+          if [[ -z "$stable_tag" ]]; then
+            echo "A stable version tag is required to calculate the next patch version." >&2
             exit 1
           fi
+
+          patch="${stable_tag##*.}"
+          next_version="${stable_tag%.*}.$((10#$patch + 1))"
+          last_dev=$(awk -v prefix="${next_version}-dev" '
+            !found && index($0, prefix) == 1 {
+              suffix = substr($0, length(prefix) + 1)
+              if (suffix ~ /^[0-9]+$/) { print suffix; found=1 }
+            }
+          ' <<< "$tags")
+
+          dev=0
+          if [[ -n "$last_dev" ]]; then
+            dev=$((10#$last_dev + 1))
+          fi
+
+          tag="${next_version}-dev${dev}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "NET_VERSION=${tag#v}" >> "$GITHUB_ENV"
           echo "ZIP_NAME=Jellyfin.Plugin.Subdivx-${tag}.zip" >> "$GITHUB_ENV"
       - name: Restore
         run: dotnet restore
       - name: Test
-        if: github.event_name == 'push'
+        if: github.event_name == 'workflow_dispatch'
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: dotnet test --configuration Release --no-restore --verbosity normal
@@ -69,7 +77,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     needs: package
     runs-on: ubuntu-latest
     permissions:
@@ -82,8 +90,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.package.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
         run: |
           gh release create "$TAG" "Jellyfin.Plugin.Subdivx-${TAG}.zip" \
-            --verify-tag --prerelease --latest=false --title "$TAG" \
+            --target "$TARGET_SHA" --prerelease --latest=false --title "$TAG" \
             --notes "Development build for manual testing."
