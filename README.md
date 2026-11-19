@@ -26,6 +26,17 @@ You can install and keep the plugin updated by adding its repository to Jellyfin
 6) Go to Plugins → Catalog, search for “Subdivx” and click Install.
 7) Restart the Jellyfin server if prompted.
 
+## Development Builds
+
+From a checkout of the commit you want to test, push a tag such as `v1.0.5-dev0`. The tagged commit must include the dev release workflow. Increment the suffix for each build (`v1.0.5-dev1`, `v1.0.5-dev2`).
+
+```sh
+git tag v1.0.5-dev0
+git push origin v1.0.5-dev0
+```
+
+After the tests pass, GitHub Actions publishes a pre-release with `Jellyfin.Plugin.Subdivx-v1.0.5-dev0.zip` for manual testing. The plugin catalog manifest stays on the stable channel.
+
 ## Plugin Configuration
 After installing, open: Dashboard → Plugins → Subdivx → Configuration.
 
