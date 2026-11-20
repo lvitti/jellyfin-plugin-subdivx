@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "9f420e7a-3ae6-4073-9bc9-81da6dea8143",
+    "name": "subdivx",
+    "description": "Download subtitles from subdivx.",
+    "overview": "Download subtitles for your media.",
+    "owner": "lvitti",
+    "category": "Metadata",
+    "imageUrl": "",
+    "versions": [
+      {
+        "checksum": "3003c3a8c3fe03ccfb0bc33448396d08",
+        "changelog": "Development pre-release v1.0.5-dev0. Fixes subtitle selection in downloaded archives (issue #5).",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/lvitti/jellyfin-plugin-subdivx/releases/download/v1.0.5-dev0/Jellyfin.Plugin.Subdivx-v1.0.5-dev0.zip",
+        "timestamp": "2026-11-19T14:42:41Z",
+        "version": "1.0.4.1"
+      }
+    ]
+  }
+]
