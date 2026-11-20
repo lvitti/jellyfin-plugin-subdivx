@@ -11,7 +11,6 @@ using MediaBrowser.Controller.Subtitles;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
-using SharpCompress.Readers;
 
 namespace Jellyfin.Plugin.Subdivx;
 
@@ -90,10 +89,26 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
 
     public async Task<SubtitleResponse> GetSubtitles(string id, CancellationToken cancellationToken)
     {
-        await Task.Run(() => { _logger.LogInformation("Subdivx GetSubtitles id: {Id}", id); }, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var subtitle = DownloadSubtitle(id);
-        return subtitle;
+        var configuration = Configuration;
+        var url = $"{configuration.SubXApiUrl}/api/subtitles/{id}/download";
+        using var client = new HttpClient(new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+        })
+        {
+            Timeout = TimeSpan.FromSeconds(90),
+            MaxResponseContentBufferSize = 32 * 1024 * 1024
+        };
+
+        client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+        if (!string.IsNullOrEmpty(configuration.Token))
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", configuration.Token);
+
+        using var response = await DownloadArchive(client, url, cancellationToken).ConfigureAwait(false);
+        using var archive = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        return SubtitleArchive.Extract(archive, cancellationToken);
     }
     
     private class SearchResponse
@@ -138,8 +153,7 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
                 Id = x.id,
                 DownloadCount = x.downloads,
                 Author = x.uploader_name,
-                ProviderName = Name,
-                Format = "srt"
+                ProviderName = Name
             };
             if (Configuration?.ShowTitleInResult == true || Configuration?.ShowUploaderInResult == true)
             {
@@ -248,123 +262,34 @@ public class SubdivxProvider: ISubtitleProvider, IHasOrder
         return JsonSerializer.Deserialize<T>(jsonResponseString);
     }
     
-    private SubtitleResponse DownloadSubtitle(string id)
+    private async Task<HttpResponseMessage> DownloadArchive(HttpClient client, string url, CancellationToken cancellationToken)
     {
-        Stream? fileStream = null;
-
-        var iteration = 0;
-        var maxIterations = 10;
-        do
+        const int maxAttempts = 10;
+        for (var attempt = 1; ; attempt++)
         {
             try
             {
-                var getSubtitleUrl = $"{this.Configuration.SubXApiUrl}/api/subtitles/{id}/download";
-                _logger.LogInformation("Download subtitle, {SubtitleUrl}", getSubtitleUrl);
-                fileStream = GetFileStream(getSubtitleUrl, bearerToken: this.Configuration.Token);
+                _logger.LogInformation("Download subtitle, {SubtitleUrl}", url);
+                var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                    return response;
+
+                using (response)
+                    response.EnsureSuccessStatusCode();
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex) when (
+                attempt < maxAttempts &&
+                !cancellationToken.IsCancellationRequested &&
+                ex.HttpRequestError != HttpRequestError.ConfigurationLimitExceeded &&
+                (ex.StatusCode is null or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError))
             {
-                _logger.LogInformation("Error downloading subtitle, ex: {ExMessage}", ex.Message);
-                iteration++;
+                _logger.LogInformation(ex, "Subtitle download attempt {Attempt} failed", attempt);
             }
-        } while (fileStream == null && iteration < maxIterations);
-
-        return new SubtitleResponse()
-        {
-            Format = "srt",
-            IsForced = false,
-            Language = "ES",
-            Stream = fileStream
-        };
-    }
-    
-    private Stream GetFileStream(string urlAddress, string? bearerToken = null, Dictionary<string, string>? headers = null)
-    {
-        _logger.LogInformation("GetFileStream Url: {UrlAddress}", urlAddress);
-
-        var handler = new HttpClientHandler
-        {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-        };
-
-        using (handler)
-        using (var http = new HttpClient(handler))
-        {
-            http.Timeout = TimeSpan.FromSeconds(90);
-
-            using (var req = new HttpRequestMessage(HttpMethod.Get, urlAddress))
+            catch (OperationCanceledException ex) when (
+                attempt < maxAttempts && !cancellationToken.IsCancellationRequested)
             {
-                req.Headers.TryAddWithoutValidation("Accept", "*/*");
-
-                if (!string.IsNullOrEmpty(bearerToken))
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-
-                if (headers != null)
-                {
-                    foreach (var (key, value) in headers)
-                    {
-                        if (key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (TryParseAuthHeader(value, out var scheme, out var parameter))
-                            {
-                                if (scheme != null)
-                                    req.Headers.Authorization = new AuthenticationHeaderValue(scheme, parameter);
-                            }
-                            else
-                                req.Headers.TryAddWithoutValidation(key, value);
-                        }
-                        else if (key.Equals("Accept", StringComparison.OrdinalIgnoreCase))
-                        {
-                            req.Headers.Accept.Clear();
-                            var parts = value.Split([','], StringSplitOptions.RemoveEmptyEntries);
-                            foreach (var t in parts)
-                                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(t.Trim()));
-                        }
-                        else if (key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
-                        {
-                            req.Headers.UserAgent.Clear();
-                            req.Headers.UserAgent.ParseAdd(value);
-                        }
-                        else if (key.Equals("Host", StringComparison.OrdinalIgnoreCase))
-                            req.Headers.Host = value;
-                        else
-                            req.Headers.TryAddWithoutValidation(key, value);
-                    }
-                }
-
-                using (var resp = http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).Result)
-                {
-                    resp.EnsureSuccessStatusCode();
-
-                    using (var archiveStream = resp.Content.ReadAsStreamAsync().Result)
-                    {
-                        return Unzip(archiveStream);
-                    }
-                }
+                _logger.LogInformation(ex, "Subtitle download attempt {Attempt} timed out", attempt);
             }
         }
-    }
-
-    private Stream Unzip(Stream zippedStream)
-    {
-        var ms = new MemoryStream();
-        using (var reader = ReaderFactory.Open(zippedStream))
-        {
-            while (reader.MoveToNextEntry())
-            {
-                if (reader.Entry is not { IsDirectory: false, Key: not null } ||
-                    reader.Entry.Key.StartsWith("__MACOSX")) continue;
-                
-                using (var entryStream = reader.OpenEntryStream())
-                {
-                    entryStream.CopyTo(ms);
-                    ms.Position = 0;
-                }
-
-                break;
-            }
-        }
-
-        return ms;
     }
 }

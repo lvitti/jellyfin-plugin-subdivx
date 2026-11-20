@@ -27,6 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Update="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
       <None Update="config.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
